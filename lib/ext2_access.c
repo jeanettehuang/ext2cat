@@ -8,6 +8,7 @@
 
 // Definitions for ext2cat to compile against.
 #include "ext2_access.h"
+#include <stdio.h>
 
 
 
@@ -17,23 +18,33 @@
 
 // Return a pointer to the primary superblock of a filesystem.
 struct ext2_super_block * get_super_block(void * fs) {
-    // FIXME: Uses reference implementation.
-    return _ref_get_super_block(fs);
+		return (void*)((long int)fs + 1024);
+		//return _ref_get_super_block(fs);
 }
 
 
 // Return the block size for a filesystem.
 __u32 get_block_size(void * fs) {
-    // FIXME: Uses reference implementation.
-    return _ref_get_block_size(fs);
+    
+		struct ext2_super_block* sb = get_super_block(fs);
+
+		int shift = sb->s_log_block_size;
+		int size = 1024 << shift;
+
+		return size;
+		//return _ref_get_block_size(fs);
 }
 
 
 // Return a pointer to a block given its number.
 // get_block(fs, 0) == fs;
 void * get_block(void * fs, __u32 block_num) {
-    // FIXME: Uses reference implementation.
-    return _ref_get_block(fs, block_num);
+    
+		__u32 offset = block_num * get_block_size(fs);
+		struct ext2_super_block* sb = get_super_block(fs);
+		return (void*)((long int)fs + offset);
+
+		//return _ref_get_block(fs, block_num);
 }
 
 
@@ -41,8 +52,13 @@ void * get_block(void * fs, __u32 block_num) {
 // ext2 filesystems will have several of these, but, for simplicity, we will
 // assume there is only one.
 struct ext2_group_desc * get_block_group(void * fs, __u32 block_group_num) {
-    // FIXME: Uses reference implementation.
-    return _ref_get_block_group(fs, block_group_num);
+    
+		// descriptor table is in block immediately following the superblock
+		void* sb = (void*)get_super_block(fs);
+		void* dt = get_block(sb, 1);
+		return dt;
+		
+		//return _ref_get_block_group(fs, block_group_num);
 }
 
 
@@ -50,8 +66,17 @@ struct ext2_group_desc * get_block_group(void * fs, __u32 block_group_num) {
 // would require finding the correct block group, but you may assume it's in the
 // first one.
 struct ext2_inode * get_inode(void * fs, __u32 inode_num) {
-    // FIXME: Uses reference implementation.
-    return _ref_get_inode(fs, inode_num);
+		
+		struct ext2_group_desc* dt = get_block_group(fs, 1); 
+		int i_table_blocknum = dt->bg_inode_table;
+		void* i_block = get_block(fs, i_table_blocknum);
+
+		int size = sizeof(struct ext2_inode);
+		printf("i_table: \t%lu\n", (long int)i_block + size*(inode_num-1));
+		struct ext2_inode* inode = (struct ext2_inode*)((long int)i_block + size*(inode_num - 1));
+		
+		return inode;
+    //return _ref_get_inode(fs, inode_num);
 }
 
 

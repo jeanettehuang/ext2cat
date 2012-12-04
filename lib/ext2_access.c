@@ -25,10 +25,8 @@ struct ext2_super_block * get_super_block(void * fs) {
 // Return the block size for a filesystem.
 __u32 get_block_size(void * fs) {
   struct ext2_super_block* sb = get_super_block(fs);
-
   int shift = sb->s_log_block_size;
   int size = 1024 << shift;
-
   return size;
 }
 
@@ -62,7 +60,6 @@ struct ext2_inode * get_inode(void * fs, __u32 inode_num) {
   void* i_block = get_block(fs, i_table_blocknum);
   int size = sizeof(struct ext2_inode);
   struct ext2_inode* inode = (struct ext2_inode*)((long int)i_block + size*(inode_num - 1));
-
   return inode;
 }
 
@@ -149,7 +146,7 @@ __u32 get_inode_by_path(void * fs, char * path) {
   // initialize variables
   int i;
   struct ext2_inode* dir = get_root_dir(fs);
-  __u32 num;
+  __u32 num; // inode number
   // split the path
   char** splitpth = split_path(path);
 

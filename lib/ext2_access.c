@@ -19,7 +19,6 @@
 // Return a pointer to the primary superblock of a filesystem.
 struct ext2_super_block * get_super_block(void * fs) {
   return (void*)((long int)fs + 1024);
-  //return _ref_get_super_block(fs);
 }
 
 
@@ -31,7 +30,6 @@ __u32 get_block_size(void * fs) {
   int size = 1024 << shift;
 
   return size;
-  //return _ref_get_block_size(fs);
 }
 
 
@@ -41,8 +39,6 @@ void * get_block(void * fs, __u32 block_num) {
   __u32 offset = block_num * get_block_size(fs);
   struct ext2_super_block* sb = get_super_block(fs);
   return (void*)((long int)fs + offset);
-
-  //return _ref_get_block(fs, block_num);
 }
 
 
@@ -54,8 +50,6 @@ struct ext2_group_desc * get_block_group(void * fs, __u32 block_group_num) {
   void* sb = (void*)get_super_block(fs);
   void* dt = get_block(sb, 1);
   return dt;
-
-  //return _ref_get_block_group(fs, block_group_num);
 }
 
 
@@ -63,17 +57,13 @@ struct ext2_group_desc * get_block_group(void * fs, __u32 block_group_num) {
 // would require finding the correct block group, but you may assume it's in the
 // first one.
 struct ext2_inode * get_inode(void * fs, __u32 inode_num) {
+  struct ext2_group_desc* dt = get_block_group(fs, 1);
+  int i_table_blocknum = dt->bg_inode_table;
+  void* i_block = get_block(fs, i_table_blocknum);
+  int size = sizeof(struct ext2_inode);
+  struct ext2_inode* inode = (struct ext2_inode*)((long int)i_block + size*(inode_num - 1));
 
-		struct ext2_group_desc* dt = get_block_group(fs, 1);
-		int i_table_blocknum = dt->bg_inode_table;
-		void* i_block = get_block(fs, i_table_blocknum);
-
-		int size = sizeof(struct ext2_inode);
-		printf("i_table: \t%lu\n", (long int)i_block + size*(inode_num-1));
-		struct ext2_inode* inode = (struct ext2_inode*)((long int)i_block + size*(inode_num - 1));
-
-		return inode;
-    //return _ref_get_inode(fs, inode_num);
+  return inode;
 }
 
 
@@ -122,17 +112,53 @@ struct ext2_inode * get_root_dir(void * fs) {
 // that file inside that directory, or 0 if it doesn't exist there.
 //
 // name should be a single component: "foo.txt", not "/files/foo.txt".
-__u32 get_inode_from_dir(void * fs, struct ext2_inode * dir,
-        char * name) {
-    // FIXME: Uses reference implementation.
-    return _ref_get_inode_from_dir(fs, dir, name);
+__u32 get_inode_from_dir(void * fs, struct ext2_inode * dir, char * name) {
+  // initialize variables
+  unsigned int* dirblk = dir->i_block;
+  int fst = dirblk[0], i, loc;
+  struct ext2_dir_entry_2* entry = get_block(fs, fst);
+
+  // error handling
+  if ((entry->file_type != 2) || (fst == 0)) { return 0; }
+
+  while (entry->rec_len != 0) {
+    loc = 0;
+    while (strlen(name) > entry->name_len) { entry = entry->rec_len + (void*)entry; }
+    for (i = 0; i < entry->name_len; i++) {
+      // file exists in directory
+      if (entry->name[i] == name[i]) {
+        loc = 1;
+      }
+      // file does not exist
+      else {
+        loc = 0;
+        break;
+      }
+    }
+    // if file exists, return the inode num of that file
+    if (loc) { return entry->inode; }
+    entry = entry->rec_len + (void*)entry;
+  }
+  return 0;
 }
 
 
 // Find the inode number for a file by its full path.
 // This is the functionality that ext2cat ultimately needs.
 __u32 get_inode_by_path(void * fs, char * path) {
-    // FIXME: Uses reference implementation.
-    return _ref_get_inode_by_path(fs, path);
+  // initialize variables
+  int i;
+  struct ext2_inode* dir = get_root_dir(fs);
+  __u32 num;
+  // split the path
+  char** splitpth = split_path(path);
+
+  for (i = 0; splitpth[i] != 0 && i < 3; i++) {
+    num = get_inode_from_dir(fs, dir, splitpth[i]);
+    if (num == 0) { return 0; }
+    // find inode num for a file
+    dir = get_inode(fs, num);
+  }
+  return num;
 }
 

@@ -84,13 +84,13 @@ char ** split_path(char * path) {
     char * piece_start = path + 1;
     int i = 0;
     for (char * slash = strchr(path + 1, '/');
-         slash != NULL;
-         slash = strchr(slash + 1, '/')) {
-        int part_len = slash - piece_start;
-        parts[i] = (char *) calloc(part_len, sizeof(char));
-        strncpy(parts[i], piece_start, part_len);
-        piece_start = slash + 1;
-        i++;
+      slash != NULL;
+      slash = strchr(slash + 1, '/')) {
+      int part_len = slash - piece_start;
+      parts[i] = (char *) calloc(part_len, sizeof(char));
+      strncpy(parts[i], piece_start, part_len);
+      piece_start = slash + 1;
+      i++;
     }
     // Get the last piece.
     parts[i] = (char *) calloc(strlen(piece_start) + 1, sizeof(char));
@@ -126,7 +126,6 @@ __u32 get_inode_from_dir(void * fs, struct ext2_inode * dir, char * name) {
       if (entry->name[i] == name[i]) {
         loc = 1;
       }
-      // file does not exist
       else {
         loc = 0;
         break;
@@ -145,8 +144,9 @@ __u32 get_inode_from_dir(void * fs, struct ext2_inode * dir, char * name) {
 __u32 get_inode_by_path(void * fs, char * path) {
   // initialize variables
   int i;
+  // inode number
+  __u32 num;
   struct ext2_inode* dir = get_root_dir(fs);
-  __u32 num; // inode number
   // split the path
   char** splitpth = split_path(path);
 
